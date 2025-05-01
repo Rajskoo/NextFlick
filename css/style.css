@@ -1,0 +1,398 @@
+:root {
+    --primary-color: #0056b3;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
+    --bg-color: #f5f5f5;
+    --card-bg: #ffffff;
+    --border-color: #dee2e6;
+    --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--bg-color);
+    color: var(--dark-color);
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+h1 {
+    color: var(--primary-color);
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background-color 0.3s;
+}
+
+.btn-primary:hover {
+    background-color: #004494;
+}
+
+main {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+}
+
+@media (min-width: 768px) {
+    main {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.movie-section {
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+}
+
+.movie-section h2 {
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1.5rem;
+    color: var(--primary-color);
+}
+
+.movie-section.watched h2 {
+    border-bottom-color: var(--secondary-color);
+    color: var(--secondary-color);
+}
+
+.movie-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-height: 600px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.movie-card {
+    background-color: var(--light-color);
+    border-radius: 6px;
+    padding: 1rem;
+    border-left: 4px solid var(--primary-color);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+.movie-card.watched {
+    border-left-color: var(--secondary-color);
+    opacity: 0.8;
+}
+
+.movie-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+}
+
+.movie-header h3 {
+    margin: 0;
+    flex-grow: 1;
+}
+
+.movie-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.movie-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.btn-watch {
+    color: var(--success-color);
+}
+
+.btn-watch:hover {
+    background-color: rgba(40, 167, 69, 0.1);
+}
+
+.btn-unwatch {
+    color: var(--secondary-color);
+}
+
+.btn-unwatch:hover {
+    background-color: rgba(108, 117, 125, 0.1);
+}
+
+.btn-delete {
+    color: var(--danger-color);
+}
+
+.btn-delete:hover {
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+.movie-details {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--secondary-color);
+}
+
+.movie-year, .movie-genre {
+    display: inline-block;
+    padding: 0.1rem 0.5rem;
+    background-color: rgba(108, 117, 125, 0.1);
+    border-radius: 4px;
+}
+
+.movie-description {
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+}
+
+.rating {
+    display: flex;
+    gap: 0.25rem;
+}
+
+/* Base styles for rating icons */
+.dino-rating {
+    cursor: pointer;
+    transition: transform 0.2s;
+    display: inline-block;
+    margin: 0 2px;
+}
+
+.dino-img {
+    width: 24px;
+    height: 24px;
+    opacity: 0.5;
+    filter: grayscale(1);
+    transition: filter 0.3s, opacity 0.3s;
+}
+
+.dino-rating:hover {
+    transform: scale(1.2);
+}
+
+.dino-rating.active .dino-img {
+    opacity: 1;
+    filter: grayscale(0);
+}
+
+/* Mia's rating - lavender color */
+.rating-mia .dino-rating.active .dino-img {
+    filter: brightness(0) saturate(100%) invert(42%) sepia(68%) saturate(1009%) hue-rotate(235deg) brightness(91%) contrast(97%);
+}
+
+/* Tomino's rating - light blue color */
+.rating-tomino .dino-rating.active .dino-img {
+    filter: brightness(0) saturate(100%) invert(69%) sepia(40%) saturate(1913%) hue-rotate(182deg) brightness(102%) contrast(102%);
+}
+
+/* Average rating - color based on rating value */
+/* For ratings 1-2: Red */
+.rating-average[data-rating="1"] .dino-rating.active .dino-img,
+.rating-average[data-rating="2"] .dino-rating.active .dino-img {
+    filter: brightness(0) saturate(100%) invert(22%) sepia(90%) saturate(5671%) hue-rotate(353deg) brightness(93%) contrast(87%);
+}
+
+/* For ratings 3-4: Yellow */
+.rating-average[data-rating="3"] .dino-rating.active .dino-img,
+.rating-average[data-rating="4"] .dino-rating.active .dino-img {
+    filter: brightness(0) saturate(100%) invert(79%) sepia(61%) saturate(1096%) hue-rotate(358deg) brightness(103%) contrast(104%);
+}
+
+/* For rating 5: Green */
+.rating-average[data-rating="5"] .dino-rating.active .dino-img {
+    filter: brightness(0) saturate(100%) invert(60%) sepia(75%) saturate(1158%) hue-rotate(93deg) brightness(92%) contrast(91%);
+}
+
+/* Average rating section */
+.average-rating {
+    background-color: rgba(240, 240, 240, 0.7);
+    border-top: 1px dashed #ddd;
+    margin-top: 0.6rem;
+    padding-top: 0.6rem;
+}
+
+/* Make average rating appear read-only */
+.rating-average .dino-rating {
+    cursor: default;
+}
+
+.rating-average .dino-rating:hover {
+    transform: none;
+}
+
+/* Container styles */
+.ratings-container {
+    margin-top: 1rem;
+    border-top: 1px solid var(--border-color);
+    padding-top: 0.8rem;
+    background-color: #f9f9f9;
+    border-radius: 6px;
+    padding: 10px;
+}
+
+.user-rating {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.8rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: 4px;
+    background-color: rgba(255, 255, 255, 0.7);
+}
+
+.user-name {
+    width: 70px;
+    font-weight: bold;
+    font-size: 0.95rem;
+    color: #333;
+}
+
+/* Rating styles */
+.rating {
+    display: flex;
+    gap: 0.2rem;
+}
+
+.empty-list {
+    text-align: center;
+    color: var(--secondary-color);
+    padding: 2rem;
+    font-style: italic;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+}
+
+.modal-content {
+    background-color: var(--card-bg);
+    margin: 10% auto;
+    padding: 2rem;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.close {
+    position: absolute;
+    top: 1rem;
+    right: 1.5rem;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--secondary-color);
+}
+
+.close:hover {
+    color: var(--danger-color);
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-family: var(--font-family);
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(0, 86, 179, 0.1);
+}
+
+/* Add these styles for movie images */
+.movie-image {
+    margin-bottom: 1rem;
+    width: 100%;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.movie-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;
+    max-height: 200px; /* Limit height for consistency */
+}
+
+/* Read-only rating styles (for watched movies) */
+.rating.read-only .dino-rating {
+    cursor: default;
+    pointer-events: none;
+}
+
+.rating.read-only .dino-rating:hover {
+    transform: none;
+}
+
+/* Add a "locked" appearance to watched movies ratings */
+.movie-card.watched .ratings-container::before {
+    content: "Hodnotenie uzamknuté";
+    display: block;
+    font-size: 0.8rem;
+    color: #6c757d;
+    font-style: italic;
+    margin-bottom: 0.5rem;
+    text-align: right;
+} 
