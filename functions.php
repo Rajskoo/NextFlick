@@ -191,4 +191,104 @@ function updateUserRating($conn, $id, $rating, $rater) {
         $stmt->close();
         return ['success' => false, 'message' => 'Chyba pri aktualizácii hodnotenia: ' . $error];
     }
+}
+
+function getDateIdeas($conn) {
+    $sql = "SELECT * FROM date_ideas ORDER BY created_at DESC";
+    $result = $conn->query($sql);
+    $ideas = [];
+    
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            // Get thread items for each idea
+            $threadSql = "SELECT * FROM date_idea_thread WHERE date_idea_id = ? ORDER BY created_at ASC";
+            $stmt = $conn->prepare($threadSql);
+            $stmt->bind_param("i", $row['id']);
+            $stmt->execute();
+            $threadResult = $stmt->get_result();
+            
+            $thread = [];
+            while ($threadItem = $threadResult->fetch_assoc()) {
+                $thread[] = $threadItem;
+            }
+            
+            $row['thread'] = $thread;
+            $ideas[] = $row;
+        }
+    }
+    
+    return $ideas;
+}
+
+function addDateIdea($conn, $title, $planned_date = null) {
+    $sql = "INSERT INTO date_ideas (title, planned_date, status) VALUES (?, ?, 'open')";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ss", $title, $planned_date);
+    
+    if ($stmt->execute()) {
+        return $conn->insert_id;
+    }
+    return false;
+}
+
+function addThreadItem($conn, $date_idea_id, $content, $type) {
+    $sql = "INSERT INTO date_idea_thread (date_idea_id, content, type) VALUES (?, ?, ?)";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("iss", $date_idea_id, $content, $type);
+    return $stmt->execute();
+}
+
+function closeDateIdea($conn, $date_idea_id) {
+    $sql = "UPDATE date_ideas SET status = 'closed' WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $date_idea_id);
+    return $stmt->execute();
+}
+
+function deleteDateIdea($conn, $date_idea_id) {
+    // First delete all thread items
+    $sql = "DELETE FROM date_idea_thread WHERE date_idea_id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $date_idea_id);
+    $stmt->execute();
+    
+    // Then delete the idea itself
+    $sql = "DELETE FROM date_ideas WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $date_idea_id);
+    return $stmt->execute();
+}
+
+/**
+ * Check if user is logged in
+ * 
+ * @return bool True if user is logged in, false otherwise
+ */
+function isLoggedIn() {
+    return isset($_SESSION['user_id']);
+}
+
+/**
+ * Get database connection
+ * 
+ * @return PDO Database connection
+ */
+function getDbConnection() {
+    require_once 'config.php';
+    try {
+        $pdo = new PDO(
+            "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
+            DB_USER,
+            DB_PASS,
+            [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false
+            ]
+        );
+        return $pdo;
+    } catch (PDOException $e) {
+        error_log("Database connection error: " . $e->getMessage());
+        throw new Exception("Chyba pripojenia k databáze");
+    }
 } 

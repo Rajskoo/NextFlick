@@ -15,12 +15,87 @@ $watched = getMovies($conn, true); // Get watched movies
     <title>NextFlick - Zoznam filmov</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Navbar styles */
+        nav.navbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fff;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+            margin-bottom: 32px;
+        }
+        .navbar-logo {
+            font-size: 1.6em;
+            font-weight: bold;
+            color: #0056b3;
+            text-decoration: none;
+        }
+        .navbar-links {
+            display: flex;
+            gap: 1rem;
+        }
+        .navbar-link {
+            color: #333;
+            text-decoration: none;
+            font-size: 1.1em;
+            padding: 0.5em 1em;
+            border-radius: 4px;
+            transition: background 0.2s, color 0.2s;
+        }
+        .navbar-link.active, .navbar-link:hover {
+            background: #0056b3;
+            color: #fff;
+        }
+        .navbar-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.8em;
+            cursor: pointer;
+            color: #0056b3;
+        }
+        @media (max-width: 700px) {
+            .navbar-links {
+                display: none;
+                flex-direction: column;
+                position: absolute;
+                top: 60px;
+                right: 10px;
+                background: #fff;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                border-radius: 8px;
+                min-width: 180px;
+                z-index: 100;
+            }
+            .navbar-links.open {
+                display: flex;
+            }
+            .navbar-toggle {
+                display: block;
+            }
+        }
+        header {
+            margin-top: 0;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
+        <nav class="navbar">
+            <a href="index.php" class="navbar-logo">NextFlick</a>
+            <button class="navbar-toggle" id="navbarToggle" aria-label="Menu"><i class="fas fa-bars"></i></button>
+            <div class="navbar-links" id="navbarLinks">
+                <a href="date_ideas.php" class="navbar-link"><i class="fas fa-heart"></i> Nápady na rande</a>
+            </div>
+        </nav>
         <header>
-            <h1>NextFlick</h1>
-            <button id="addMovieBtn" class="btn-primary"><i class="fas fa-plus"></i> Pridať film</button>
+            <h1>Nápady na film</h1>
+            <div class="header-actions">
+                <button id="addMovieBtn" class="btn-primary"><i class="fas fa-plus"></i> Pridať film</button>
+            </div>
         </header>
 
         <main>
@@ -202,5 +277,17 @@ $watched = getMovies($conn, true); // Get watched movies
     </div>
 
     <script src="js/script.js"></script>
+    <script>
+        // Navbar toggle for mobile
+        document.getElementById('navbarToggle').onclick = function() {
+            document.getElementById('navbarLinks').classList.toggle('open');
+        };
+        // Close menu on link click (mobile UX)
+        document.querySelectorAll('.navbar-link').forEach(link => {
+            link.addEventListener('click', () => {
+                document.getElementById('navbarLinks').classList.remove('open');
+            });
+        });
+    </script>
 </body>
 </html> 
