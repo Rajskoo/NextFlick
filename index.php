@@ -1,10 +1,62 @@
 <?php
-require_once 'config.php';
 require_once 'db.php';
 require_once 'functions.php';
 
-$movies = getMovies($conn, false); // Get unwatched movies
-$watched = getMovies($conn, true); // Get watched movies
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $title = $_POST['title'] ?? '';
+    $description = $_POST['description'] ?? '';
+    $target_date = $_POST['target_date'] ?? '';
+    
+    if (!empty($title) && !empty($target_date)) {
+        $stmt = $conn->prepare("INSERT INTO countdowns (title, description, target_date) VALUES (?, ?, ?)");
+        $stmt->bind_param("sss", $title, $description, $target_date);
+        $stmt->execute();
+        $stmt->close();
+        // Redirect to avoid resubmission
+        header('Location: index.php');
+        exit;
+    }
+}
+
+// Get all countdowns
+$countdowns = [];
+$result = $conn->query("SELECT * FROM countdowns ORDER BY target_date ASC");
+if ($result) {
+    while ($row = $result->fetch_assoc()) {
+        $countdowns[] = $row;
+    }
+    $result->free();
+}
+
+// Separate active and past countdowns
+$active_countdowns = [];
+$past_countdowns = [];
+$now = new DateTime();
+
+foreach ($countdowns as $countdown) {
+    $target_date = new DateTime($countdown['target_date']);
+    if ($target_date > $now) {
+        $active_countdowns[] = $countdown;
+    } else {
+        $past_countdowns[] = $countdown;
+    }
+}
+
+// Helper for 'how long ago'
+function timeAgo($datetime) {
+    $now = new DateTime();
+    $ago = new DateTime($datetime);
+    $diff = $now->diff($ago);
+
+    if ($diff->y > 0) return 'pred ' . $diff->y . ' rokmi';
+    if ($diff->m > 0) return 'pred ' . $diff->m . ' mesiacmi';
+    if ($diff->d > 6) return 'pred ' . floor($diff->d / 7) . ' týždňami';
+    if ($diff->d > 0) return 'pred ' . $diff->d . ' dňami';
+    if ($diff->h > 0) return 'pred ' . $diff->h . ' hodinami';
+    if ($diff->i > 0) return 'pred ' . $diff->i . ' minútami';
+    return 'pred chvíľou';
+}
 ?>
 
 <!DOCTYPE html>
@@ -12,282 +64,344 @@ $watched = getMovies($conn, true); // Get watched movies
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NextFlick - Zoznam filmov</title>
+    <title>Odpočítavanie | NextFlick</title>
     <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Navbar styles */
-        nav.navbar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+        .countdown-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .countdown-form {
             background: #fff;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
-            margin-bottom: 32px;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
         }
-        .navbar-logo {
-            font-size: 1.6em;
-            font-weight: bold;
-            color: #0056b3;
-            text-decoration: none;
-        }
-        .navbar-links {
-            display: flex;
-            gap: 1rem;
-        }
-        .navbar-link {
+        
+        .countdown-form h2 {
+            margin-bottom: 1.5rem;
             color: #333;
-            text-decoration: none;
-            font-size: 1.1em;
-            padding: 0.5em 1em;
-            border-radius: 4px;
-            transition: background 0.2s, color 0.2s;
         }
-        .navbar-link.active, .navbar-link:hover {
-            background: #0056b3;
-            color: #fff;
+        
+        .form-group {
+            margin-bottom: 1rem;
         }
-        .navbar-toggle {
-            display: none;
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #555;
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        
+        .form-group textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        
+        .countdown-list {
+            display: grid;
+            gap: 1.5rem;
+        }
+        
+        .countdown-card {
+            background: #fff;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        
+        .countdown-card h3 {
+            margin: 0 0 0.5rem 0;
+            color: #333;
+            padding-right: 60px;
+        }
+        
+        .countdown-card .description {
+            color: #666;
+            margin-bottom: 1rem;
+        }
+        
+        .countdown-card .timer {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #e74c3c;
+        }
+        
+        .countdown-card .date {
+            color: #888;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+        
+        .btn {
+            background: #3498db;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s;
+        }
+        
+        .btn:hover {
+            background: #2980b9;
+        }
+
+        .countdown-actions {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-edit, .btn-delete {
             background: none;
             border: none;
-            font-size: 1.8em;
             cursor: pointer;
-            color: #0056b3;
+            font-size: 1.1rem;
+            padding: 0.5rem;
+            border-radius: 5px;
+            transition: all 0.3s;
         }
-        @media (max-width: 700px) {
-            .navbar-links {
-                display: none;
-                flex-direction: column;
-                position: absolute;
-                top: 60px;
-                right: 10px;
-                background: #fff;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-                border-radius: 8px;
-                min-width: 180px;
-                z-index: 100;
-            }
-            .navbar-links.open {
-                display: flex;
-            }
-            .navbar-toggle {
-                display: block;
-            }
+
+        .btn-edit {
+            color: #3498db;
         }
-        header {
-            margin-top: 0;
+
+        .btn-delete {
+            color: #e74c3c;
+        }
+
+        .btn-edit:hover {
+            background: #ebf5fb;
+        }
+
+        .btn-delete:hover {
+            background: #fdedec;
+        }
+
+        .section-title {
+            margin: 2rem 0 1rem;
+            color: #333;
+            font-size: 1.5rem;
+        }
+
+        .past-countdowns {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #eee;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 500px;
+            margin: 2rem auto;
+            padding: 2rem;
+            border-radius: 10px;
+            position: relative;
+        }
+
+        .close {
+            position: absolute;
+            right: 1rem;
+            top: 1rem;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <nav class="navbar">
-            <a href="index.php" class="navbar-logo">NextFlick</a>
-            <button class="navbar-toggle" id="navbarToggle" aria-label="Menu"><i class="fas fa-bars"></i></button>
-            <div class="navbar-links" id="navbarLinks">
-                <a href="date_ideas.php" class="navbar-link"><i class="fas fa-heart"></i> Nápady na rande</a>
+    <?php include 'header.php'; ?>
+    
+    <div class="countdown-container">
+        <!-- Active Countdowns -->
+        <?php if (!empty($active_countdowns)): ?>
+            <div class="countdown-list">
+                <?php foreach ($active_countdowns as $countdown): ?>
+                    <div class="countdown-card">
+                        <div class="countdown-actions">
+                            <button class="btn-edit" onclick="editCountdown(<?php echo $countdown['id']; ?>)">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-delete" onclick="deleteCountdown(<?php echo $countdown['id']; ?>)">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                        <h3><?php echo htmlspecialchars($countdown['title']); ?></h3>
+                        <?php if (!empty($countdown['description'])): ?>
+                            <div class="description"><?php echo htmlspecialchars($countdown['description']); ?></div>
+                        <?php endif; ?>
+                        <div class="timer" data-target="<?php echo $countdown['target_date']; ?>">
+                            Načítavam...
+                        </div>
+                        <div class="date">
+                            <?php echo date('d.m.Y H:i', strtotime($countdown['target_date'])); ?>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
             </div>
-        </nav>
-        <header>
-            <h1>Nápady na film</h1>
-            <div class="header-actions">
-                <button id="addMovieBtn" class="btn-primary"><i class="fas fa-plus"></i> Pridať film</button>
-            </div>
-        </header>
+        <?php endif; ?>
 
-        <main>
-            <section class="movie-section">
-                <h2>Filmy na pozretie</h2>
-                <div class="movie-list">
-                    <?php if (empty($movies)): ?>
-                        <p class="empty-list">Žiadne filmy na pozretie. Pridajte nový!</p>
-                    <?php else: ?>
-                        <?php foreach ($movies as $movie): ?>
-                            <div class="movie-card" data-id="<?= htmlspecialchars($movie['id']) ?>">
-                                <?php if (!empty($movie['image_url'])): ?>
-                                    <div class="movie-image">
-                                        <img src="<?= htmlspecialchars($movie['image_url']) ?>" alt="<?= htmlspecialchars($movie['title']) ?>">
-                                    </div>
-                                <?php endif; ?>
-                                <div class="movie-header">
-                                    <h3><?= htmlspecialchars($movie['title']) ?></h3>
-                                    <div class="movie-actions">
-                                        <button class="btn-watch" title="Označiť ako pozrené">
-                                            <i class="fas fa-check"></i>
-                                        </button>
-                                        <button class="btn-delete" title="Vymazať">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="movie-details">
-                                    <?php if (!empty($movie['year'])): ?>
-                                        <span class="movie-year"><?= htmlspecialchars($movie['year']) ?></span>
-                                    <?php endif; ?>
-                                    <?php if (!empty($movie['genre'])): ?>
-                                        <span class="movie-genre"><?= htmlspecialchars($movie['genre']) ?></span>
-                                    <?php endif; ?>
-                                </div>
-                                <?php if (!empty($movie['description'])): ?>
-                                    <p class="movie-description"><?= htmlspecialchars($movie['description']) ?></p>
-                                <?php endif; ?>
-                                
-                                <div class="ratings-container">
-                                    <div class="user-rating">
-                                        <span class="user-name">Miuš:</span>
-                                        <div class="rating rating-mia" data-id="<?= htmlspecialchars($movie['id']) ?>" data-rating="<?= htmlspecialchars($movie['rating_mia'] ?? 0) ?>" data-rater="mia">
-                                            <?php for ($i = 1; $i <= 5; $i++): ?>
-                                                <span class="dino-rating <?= ($i <= ($movie['rating_mia'] ?? 0)) ? 'active' : '' ?>" data-rating="<?= $i ?>">
-                                                    <img src="img/svg_dino.svg" alt="Dinosaur" class="dino-img">
-                                                </span>
-                                            <?php endfor; ?>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="user-rating">
-                                        <span class="user-name">Tomino:</span>
-                                        <div class="rating rating-tomino" data-id="<?= htmlspecialchars($movie['id']) ?>" data-rating="<?= htmlspecialchars($movie['rating_tomino'] ?? 0) ?>" data-rater="tomino">
-                                            <?php for ($i = 1; $i <= 5; $i++): ?>
-                                                <span class="dino-rating <?= ($i <= ($movie['rating_tomino'] ?? 0)) ? 'active' : '' ?>" data-rating="<?= $i ?>">
-                                                    <img src="img/svg_dino.svg" alt="Dinosaur" class="dino-img">
-                                                </span>
-                                            <?php endfor; ?>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="user-rating average-rating">
-                                        <span class="user-name">Priemer:</span>
-                                        <div class="rating rating-average" data-id="<?= htmlspecialchars($movie['id']) ?>" data-rating="<?= htmlspecialchars($movie['rating'] ?? 0) ?>">
-                                            <?php for ($i = 1; $i <= 5; $i++): ?>
-                                                <span class="dino-rating read-only <?= ($i <= ($movie['rating'] ?? 0)) ? 'active' : '' ?>" data-rating="<?= $i ?>">
-                                                    <img src="img/svg_dino.svg" alt="Dinosaur" class="dino-img">
-                                                </span>
-                                            <?php endfor; ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
+        <!-- Add New Countdown Form -->
+        <div class="countdown-form">
+            <h2>Pridať nové odpočítavanie</h2>
+            <form method="POST">
+                <div class="form-group">
+                    <label for="title">Názov</label>
+                    <input type="text" id="title" name="title" required>
                 </div>
-            </section>
-
-            <section class="movie-section watched">
-                <h2>Pozreté filmy</h2>
-                <div class="movie-list">
-                    <?php if (empty($watched)): ?>
-                        <p class="empty-list">Žiadne pozreté filmy.</p>
-                    <?php else: ?>
-                        <?php foreach ($watched as $movie): ?>
-                            <div class="movie-card watched" data-id="<?= htmlspecialchars($movie['id']) ?>">
-                                <?php if (!empty($movie['image_url'])): ?>
-                                    <div class="movie-image">
-                                        <img src="<?= htmlspecialchars($movie['image_url']) ?>" alt="<?= htmlspecialchars($movie['title']) ?>">
-                                    </div>
-                                <?php endif; ?>
-                                <div class="movie-header">
-                                    <h3><?= htmlspecialchars($movie['title']) ?></h3>
-                                    <div class="movie-actions">
-                                        <button class="btn-unwatch" title="Označiť ako nepozrené">
-                                            <i class="fas fa-undo"></i>
-                                        </button>
-                                        <button class="btn-delete" title="Vymazať">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="movie-details">
-                                    <?php if (!empty($movie['year'])): ?>
-                                        <span class="movie-year"><?= htmlspecialchars($movie['year']) ?></span>
-                                    <?php endif; ?>
-                                    <?php if (!empty($movie['genre'])): ?>
-                                        <span class="movie-genre"><?= htmlspecialchars($movie['genre']) ?></span>
-                                    <?php endif; ?>
-                                </div>
-                                <?php if (!empty($movie['description'])): ?>
-                                    <p class="movie-description"><?= htmlspecialchars($movie['description']) ?></p>
-                                <?php endif; ?>
-                                
-                                <div class="ratings-container">
-                                    <div class="user-rating">
-                                        <span class="user-name">Miuš:</span>
-                                        <div class="rating rating-mia read-only" data-id="<?= htmlspecialchars($movie['id']) ?>" data-rating="<?= htmlspecialchars($movie['rating_mia'] ?? 0) ?>" data-rater="mia">
-                                            <?php for ($i = 1; $i <= 5; $i++): ?>
-                                                <span class="dino-rating <?= ($i <= ($movie['rating_mia'] ?? 0)) ? 'active' : '' ?>" data-rating="<?= $i ?>">
-                                                    <img src="img/svg_dino.svg" alt="Dinosaur" class="dino-img">
-                                                </span>
-                                            <?php endfor; ?>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="user-rating">
-                                        <span class="user-name">Tomino:</span>
-                                        <div class="rating rating-tomino read-only" data-id="<?= htmlspecialchars($movie['id']) ?>" data-rating="<?= htmlspecialchars($movie['rating_tomino'] ?? 0) ?>" data-rater="tomino">
-                                            <?php for ($i = 1; $i <= 5; $i++): ?>
-                                                <span class="dino-rating <?= ($i <= ($movie['rating_tomino'] ?? 0)) ? 'active' : '' ?>" data-rating="<?= $i ?>">
-                                                    <img src="img/svg_dino.svg" alt="Dinosaur" class="dino-img">
-                                                </span>
-                                            <?php endfor; ?>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="user-rating average-rating">
-                                        <span class="user-name">Priemer:</span>
-                                        <div class="rating rating-average read-only" data-id="<?= htmlspecialchars($movie['id']) ?>" data-rating="<?= htmlspecialchars($movie['rating'] ?? 0) ?>">
-                                            <?php for ($i = 1; $i <= 5; $i++): ?>
-                                                <span class="dino-rating <?= ($i <= ($movie['rating'] ?? 0)) ? 'active' : '' ?>" data-rating="<?= $i ?>">
-                                                    <img src="img/svg_dino.svg" alt="Dinosaur" class="dino-img">
-                                                </span>
-                                            <?php endfor; ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
+                <div class="form-group">
+                    <label for="description">Popis</label>
+                    <textarea id="description" name="description"></textarea>
                 </div>
-            </section>
-        </main>
-
-        <!-- Modal pre pridanie filmu -->
-        <div id="addMovieModal" class="modal">
-            <div class="modal-content">
-                <span class="close">&times;</span>
-                <h2>Pridať nový film</h2>
-                <form id="addMovieForm" action="add_movie.php" method="post">
-                    <div class="form-group">
-                        <label for="title">Názov filmu*:</label>
-                        <input type="text" id="title" name="title" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="image_url">Link na obrázok:</label>
-                        <input type="url" id="image_url" name="image_url" placeholder="https://example.com/image.jpg">
-                    </div>
-                    <div class="form-group">
-                        <label for="description">Popis:</label>
-                        <textarea id="description" name="description" rows="3"></textarea>
-                    </div>
-                    <button type="submit" class="btn-primary">Pridať film</button>
-                </form>
+                <div class="form-group">
+                    <label for="target_date">Dátum a čas</label>
+                    <input type="datetime-local" id="target_date" name="target_date" required>
+                </div>
+                <button type="submit" class="btn">Pridať odpočítavanie</button>
+            </form>
+        </div>
+        
+        <!-- Past Countdowns -->
+        <?php if (!empty($past_countdowns)): ?>
+            <div class="past-countdowns">
+                <h2 class="section-title">Uplynulé odpočítavania</h2>
+                <div class="countdown-list">
+                    <?php foreach ($past_countdowns as $countdown): ?>
+                        <div class="countdown-card">
+                            <div class="countdown-actions">
+                                <button class="btn-edit" onclick="editCountdown(<?php echo $countdown['id']; ?>)">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn-delete" onclick="deleteCountdown(<?php echo $countdown['id']; ?>)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                            <h3><?php echo htmlspecialchars($countdown['title']); ?></h3>
+                            <?php if (!empty($countdown['description'])): ?>
+                                <div class="description"><?php echo htmlspecialchars($countdown['description']); ?></div>
+                            <?php endif; ?>
+                            <div class="timer">Uplynulé</div>
+                            <div class="date">
+                                <?php echo date('d.m.Y H:i', strtotime($countdown['target_date'])); ?>
+                                <span style="color:#aaa; font-size:0.95em; margin-left:10px;">
+                                    (<?php echo timeAgo($countdown['target_date']); ?>)
+                                </span>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
             </div>
+        <?php endif; ?>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Upraviť odpočítavanie</h2>
+            <form id="editForm" method="POST">
+                <input type="hidden" name="id" id="edit_id">
+                <div class="form-group">
+                    <label for="edit_title">Názov</label>
+                    <input type="text" id="edit_title" name="title" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit_description">Popis</label>
+                    <textarea id="edit_description" name="description"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="edit_target_date">Dátum a čas</label>
+                    <input type="datetime-local" id="edit_target_date" name="target_date" required>
+                </div>
+                <button type="submit" class="btn">Uložiť zmeny</button>
+            </form>
         </div>
     </div>
 
-    <script src="js/script.js"></script>
     <script>
-        // Navbar toggle for mobile
-        document.getElementById('navbarToggle').onclick = function() {
-            document.getElementById('navbarLinks').classList.toggle('open');
-        };
-        // Close menu on link click (mobile UX)
-        document.querySelectorAll('.navbar-link').forEach(link => {
-            link.addEventListener('click', () => {
-                document.getElementById('navbarLinks').classList.remove('open');
+        function updateCountdowns() {
+            document.querySelectorAll('.timer:not(.expired)').forEach(timer => {
+                const targetDate = new Date(timer.dataset.target).getTime();
+                const now = new Date().getTime();
+                const distance = targetDate - now;
+                
+                if (distance < 0) {
+                    timer.innerHTML = "Uplynulé";
+                    timer.classList.add('expired');
+                    return;
+                }
+                
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                
+                timer.innerHTML = `${days}d ${hours}h ${minutes}m ${seconds}s`;
             });
-        });
+        }
+        
+        // Update countdowns every second
+        setInterval(updateCountdowns, 1000);
+        updateCountdowns(); // Initial update
+
+        // Modal functionality
+        const modal = document.getElementById('editModal');
+        const closeBtn = document.querySelector('.close');
+
+        closeBtn.onclick = function() {
+            modal.style.display = "none";
+        }
+
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        function editCountdown(id) {
+            // Here you would typically fetch the countdown data from the server
+            // For now, we'll just show the modal
+            document.getElementById('edit_id').value = id;
+            modal.style.display = "block";
+        }
+
+        function deleteCountdown(id) {
+            if (confirm('Naozaj chcete vymazať toto odpočítavanie?')) {
+                // Here you would typically send a delete request to the server
+                window.location.href = `delete_countdown.php?id=${id}`;
+            }
+        }
     </script>
 </body>
 </html> 

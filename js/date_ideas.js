@@ -184,4 +184,20 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // Mobile menu toggle
+    document.getElementById('navbarToggle').addEventListener('click', function() {
+        document.getElementById('navbarLinks').classList.toggle('open');
+    });
+
+    // Close mobile menu when clicking outside
+    document.addEventListener('click', function(event) {
+        const navbar = document.querySelector('.navbar');
+        const navbarLinks = document.getElementById('navbarLinks');
+        const navbarToggle = document.getElementById('navbarToggle');
+        
+        if (!navbar.contains(event.target) && navbarLinks.classList.contains('open')) {
+            navbarLinks.classList.remove('open');
+        }
+    });
 }); 
