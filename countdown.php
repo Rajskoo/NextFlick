@@ -16,6 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+
 // Get all countdowns
 $countdowns = [];
 $result = $conn->query("SELECT * FROM countdowns ORDER BY target_date ASC");

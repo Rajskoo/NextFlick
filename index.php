@@ -272,6 +272,7 @@ function timeAgo($datetime) {
             </div>
         <?php endif; ?>
 
+        <br>
         <!-- Add New Countdown Form -->
         <div class="countdown-form">
             <h2>Pridať nové odpočítavanie</h2>
@@ -293,11 +294,13 @@ function timeAgo($datetime) {
         </div>
         
         <!-- Past Countdowns -->
-        <?php if (!empty($past_countdowns)): ?>
+        <?php if (!empty($past_countdowns)):
+            $reversed_past = array_reverse($past_countdowns);
+        ?>
             <div class="past-countdowns">
                 <h2 class="section-title">Uplynulé odpočítavania</h2>
                 <div class="countdown-list">
-                    <?php foreach ($past_countdowns as $countdown): ?>
+                    <?php foreach ($reversed_past as $countdown): ?>
                         <div class="countdown-card">
                             <div class="countdown-actions">
                                 <button class="btn-edit" onclick="editCountdown(<?php echo $countdown['id']; ?>)">
@@ -311,12 +314,11 @@ function timeAgo($datetime) {
                             <?php if (!empty($countdown['description'])): ?>
                                 <div class="description"><?php echo htmlspecialchars($countdown['description']); ?></div>
                             <?php endif; ?>
-                            <div class="timer">Uplynulé</div>
+                            <div class="timer" style="color:#e74c3c; font-weight:bold; font-size:1.5rem;">
+                                <?php echo timeAgo($countdown['target_date']); ?>
+                            </div>
                             <div class="date">
                                 <?php echo date('d.m.Y H:i', strtotime($countdown['target_date'])); ?>
-                                <span style="color:#aaa; font-size:0.95em; margin-left:10px;">
-                                    (<?php echo timeAgo($countdown['target_date']); ?>)
-                                </span>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -351,7 +353,7 @@ function timeAgo($datetime) {
 
     <script>
         function updateCountdowns() {
-            document.querySelectorAll('.timer:not(.expired)').forEach(timer => {
+            document.querySelectorAll('.timer[data-target]:not(.expired)').forEach(timer => {
                 const targetDate = new Date(timer.dataset.target).getTime();
                 const now = new Date().getTime();
                 const distance = targetDate - now;
